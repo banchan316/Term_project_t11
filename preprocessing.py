@@ -45,5 +45,7 @@ def preprocessing(df):
         'Civil_Twilight', 'Nautical_Twilight', 'Astronomical_Twilight' # Twilight 컬럼들 (Sunrise_Sunset과 유사하며, 카디널리티 줄이기 위해 하나만 남김)
     ]
 
-df = pd.read_csv("US_Accidents_March23_sampled_500k.csv")
-preprocessing(df)
+if __name__ == "__main__":
+    
+    df = pd.read_csv("US_Accidents_March23_sampled_500k.csv")
+    preprocessing(df)
