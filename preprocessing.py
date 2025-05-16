@@ -26,22 +26,24 @@ def preprocessing(df):
     df['Start_Month'] = df['Start_Time'].dt.month
     df['Start_DayOfWeek'] = df['Start_Time'].dt.dayofweek #요일 0 ~ 6정수로 바꾸기
 
-    cat_names = ['Country','Timezone','Amenity','Bump','Crossing',
-                 'Give_Way','Junction','No_Exit','Railway','Roundabout',
-                 'Station','Stop','Traffic_Calming','Traffic_Signal',
-                 'Turning_Loop','Sunrise_Sunset','Civil_Twilight',
-                 'Nautical_Twilight','Astronomical_Twilight']
+    cat_names = [
+    'Source', 'Severity', 'City', 'County', 'State', 'Country',
+    'Timezone', 'Weather_Condition', 'Wind_Direction',
+    'Civil_Twilight', 'Nautical_Twilight', 'Astronomical_Twilight'
+    ]
 
     for col in cat_names:
-        print(col, df[col].unique().size) #county랑 turning_loop 단일 클래스라 삭제 
+        print(col, df[col].unique().size) #country 단일 클래스라 삭제 
 
     features_to_drop = [
         'ID', 'Source', 'Start_Time', 'End_Time',
-        'End_Lat', 'End_Lng','Distance(mi)', #사고 후에나 알 수 있음
-        'County','Turning_Loop', #단일 클래스 
+        'End_Lat', 'End_Lng', # inspection 결과 결측치가 너무 많음 
+        'Distance(mi)', #사고 후에나 알 수 있음
+        'Country', #단일 클래스 
         'Description', 'Weather_Timestamp', #불필요한 정보
         'Wind_Chill(F)', # Temperature와 상관관계 높고 결측치 많음
         'Street', 'City', 'State', 'Zipcode', 'Timezone', 'Airport_Code', #굳이 필요한가
+        'Amenity', 'Bump', 'Give_way', 'No_Exit', 'Railway', 'Roundabout', 'Station', 'Stop', 'Traffic_Calming', 'Turning_Loop', #inspection 결과 너무 편향됨
         'Civil_Twilight', 'Nautical_Twilight', 'Astronomical_Twilight' # Twilight 컬럼들 (Sunrise_Sunset과 유사하며, 카디널리티 줄이기 위해 하나만 남김)
     ]
 
