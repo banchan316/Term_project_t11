@@ -69,6 +69,8 @@ def preprocessing(df,target_name):
 if __name__ == "__main__":
     df = pd.read_csv("US_Accidents_March23_sampled_500k.csv")
     x,y = preprocessing(df, 'Severity') #Severity 또는 Duration_Minutes 입력 
-
     print(x.columns)  
     print(y.value_counts())
+
+    
+
