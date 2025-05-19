@@ -328,3 +328,74 @@ def apply_scaling(df, scaler, cols=None, verbose=True):
             print(f"3사분위수 실제값 (평균): {post_stats['75%'].mean():.6f}")
     
     return df_scaled
+
+# 스케일링 전후 데이터 분포 시각화해서 비교
+def visualize_scaling_effect(df_original, df_scaled, cols=None, max_cols=5):
+    """
+    df_original : pandas DataFrame (원본 데이터프레임)
+    df_scaled : pandas DataFrame (스케일링된 데이터프레임)
+    cols : list, default=None (시각화할 컬럼 목록 (None이면 자동 선택))
+    max_cols : int, default=5 (최대 시각화할 컬럼 수)
+    """
+    # 시각화할 컬럼 선택
+    if cols is None:
+        # 공통 수치형 특성 찾기
+        numeric_cols_original = df_original.select_dtypes(include=['int64', 'float64']).columns
+        numeric_cols_scaled = df_scaled.select_dtypes(include=['int64', 'float64']).columns
+        cols = [col for col in numeric_cols_original if col in numeric_cols_scaled]
+        
+        # 최대 컬럼 수 제한
+        cols = cols[:min(max_cols, len(cols))]
+    
+    if not cols:
+        print("시각화할 공통 수치형 특성이 없습니다.")
+        return
+    
+    # 행과 열 계산
+    n_cols = 2  # 열 수 (원본, 스케일링 후)
+    n_rows = len(cols)  # 행 수 (특성별)
+    
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 4 * n_rows))
+    
+    # 단일 행인 경우 axes 배열 형태 조정
+    if n_rows == 1:
+        axes = axes.reshape(1, -1)
+    
+    for i, col in enumerate(cols):
+        # 원본 데이터 분포
+        sns.histplot(df_original[col], kde=True, ax=axes[i, 0])
+        axes[i, 0].set_title(f"{col} - Before")
+        
+        # 스케일링된 데이터 분포
+        sns.histplot(df_scaled[col], kde=True, ax=axes[i, 1])
+        axes[i, 1].set_title(f"{col} - After")
+        
+        # 통계 정보 추가
+        original_stats = (
+            f"mean: {df_original[col].mean():.2f}\n"
+            f"std: {df_original[col].std():.2f}\n"
+            f"min: {df_original[col].min():.2f}\n"
+            f"max: {df_original[col].max():.2f}\n"
+            f"range: {df_original[col].max() - df_original[col].min():.2f}"
+        )
+        
+        scaled_stats = (
+            f"mean: {df_scaled[col].mean():.2f}\n"
+            f"std: {df_scaled[col].std():.2f}\n"
+            f"min: {df_scaled[col].min():.2f}\n"
+            f"max: {df_scaled[col].max():.2f}\n"
+            f"range: {df_scaled[col].max() - df_scaled[col].min():.2f}"
+        )
+
+        # 왼쪽 상단에 통계 정보 표시 (원본)
+        axes[i, 0].text(0.05, 0.95, original_stats, transform=axes[i, 0].transAxes, 
+                        verticalalignment='top', horizontalalignment='left',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # 왼쪽 상단에 통계 정보 표시 (스케일링 후)
+        axes[i, 1].text(0.05, 0.95, scaled_stats, transform=axes[i, 1].transAxes,
+                        verticalalignment='top', horizontalalignment='left',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+                        
+    plt.tight_layout()
+    plt.show()
