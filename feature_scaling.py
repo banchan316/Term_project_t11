@@ -414,12 +414,12 @@ if __name__ == "__main__":
     print(f"데이터 로드 완료: {df.shape}")
     
     # 2. 기본 전처리 (preprocessing.py)
-    print("\n2. 기본 전처리 실행 중...")
+    print("\n2. 기본 전처리 실행")
     X, y = preprocessing(df, target_name='Severity')
     print(f"기본 전처리 완료: {X.shape}")
     
     # 3. 결측치 처리 (handle_missing_value.py)
-    print("\n3. 결측치 처리 중...")
+    print("\n3. 결측치 처리")
     X_imputed = handle_missing_value(X, verbose=True)
     print(f"결측치 처리 완료: {X_imputed.shape}")
     
@@ -472,8 +472,8 @@ if __name__ == "__main__":
     
     print(compare_df)
     
-    # 9. 결과 저장
-    print("\n9. 정규화된 데이터 저장")
+    # 10. 결과 저장
+    print("\n10. 정규화된 데이터 저장")
     os.makedirs('processed_data', exist_ok=True)
     X_scaled.to_csv('processed_data/X_standard_scaled.csv', index=False)
     X_minmax.to_csv('processed_data/X_minmax_scaled.csv', index=False)
