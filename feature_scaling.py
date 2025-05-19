@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+import joblib
+import os
 
 # 수치형 특성의 분포 및 스케일 분석
 def analyze_numeric_features(df, verbose=True, visualize=False):
@@ -117,3 +119,119 @@ def analyze_numeric_features(df, verbose=True, visualize=False):
         plt.show()
     
     return numeric_stats
+
+# 수치형 특성에 일관된 스케일링 방법 적용
+def scale_features(df, method='standard', cols=None, verbose=True):
+    """
+    df : pandas DataFrame (스케일링할 데이터프레임)
+    method : str, default='standard' (스케일링 방법 ('standard', 'minmax', 'robust'))
+    cols : list, default=None (스케일링할 컬럼 목록 (None이면 모든 수치형 특성))
+    verbose : bool, default=True (과정과 결과를 출력할지 여부)
+    df_scaled : pandas DataFrame (스케일링된 데이터프레임)
+    scaler : object (학습된 스케일러 객체)
+    """
+    # 원본 데이터 복사
+    df_scaled = df.copy()
+    
+    # 스케일링할 컬럼 선택
+    if cols is None:
+        numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+    else:
+        numeric_cols = [col for col in cols if col in df.columns]
+    
+    if not numeric_cols:
+        if verbose:
+            print("스케일링할 수치형 특성이 없습니다.")
+        return df_scaled, None
+    
+    # 스케일링 전 통계
+    pre_stats = df[numeric_cols].describe().T
+    
+    # 결측치 확인 (결측치가 있으면 경고)
+    missing_cols = [col for col in numeric_cols if df[col].isnull().sum() > 0]
+    if missing_cols:
+        if verbose:
+            print(f"특성에 결측치가 있습니다. 스케일링 전에 결측치를 처리하세요.")
+            for col in missing_cols:
+                print(f"  - {col}: {df[col].isnull().sum()}개 결측치")
+        # 결측치가 있는 특성은 제외
+        numeric_cols = [col for col in numeric_cols if col not in missing_cols]
+        if not numeric_cols:
+            if verbose:
+                print("스케일링할 수치형 특성이 남아있지 않습니다.")
+            return df_scaled, None
+    
+    # 스케일러 선택
+    if method == 'standard':
+        scaler = StandardScaler()
+        if verbose:
+            print(f"StandardScaler 적용: 평균 0, 표준편차 1로 변환")
+    elif method == 'minmax':
+        scaler = MinMaxScaler()
+        if verbose:
+            print(f"MinMaxScaler 적용: 최소 0, 최대 1로 변환")
+    elif method == 'robust':
+        scaler = RobustScaler()
+        if verbose:
+            print(f"RobustScaler 적용: 중앙값 0, IQR로 스케일링")
+    else:
+        if verbose:
+            print(f"{method}, 기본값인 StandardScaler 적용")
+        scaler = StandardScaler()
+    
+    # 스케일링 적용
+    df_scaled[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+    
+    # 스케일링 후 통계
+    post_stats = df_scaled[numeric_cols].describe().T
+    
+    if verbose:
+        print(f"{len(numeric_cols)}개 수치형 특성에 {method} 스케일링 적용 완료")
+        
+        print("\n=== 스케일링 전후 비교 ===")
+        comparison = pd.DataFrame({
+            '변환 전 평균': pre_stats['mean'],
+            '변환 전 표준편차': pre_stats['std'],
+            '변환 전 최소값': pre_stats['min'],
+            '변환 전 최대값': pre_stats['max'],
+            '변환 후 평균': post_stats['mean'],
+            '변환 후 표준편차': post_stats['std'],
+            '변환 후 최소값': post_stats['min'],
+            '변환 후 최대값': post_stats['max']
+        })
+        
+        print(comparison)
+        
+        # StandardScaler의 경우 평균, 표준편차 검증
+        if method == 'standard':
+            print("\nStandardScaler 검증:")
+            print(f"평균 기대값: 0.0")
+            print(f"표준편차 기대값: 1.0")
+            print(f"평균 실제값 (평균): {post_stats['mean'].mean():.6f}")
+            print(f"표준편차 실제값 (평균): {post_stats['std'].mean():.6f}")
+        
+        # MinMaxScaler의 경우 최소, 최대값 검증
+        elif method == 'minmax':
+            print("\nMinMaxScaler 검증:")
+            print(f"최소값 기대값: 0.0")
+            print(f"최대값 기대값: 1.0")
+            print(f"최소값 실제값 (평균): {post_stats['min'].mean():.6f}")
+            print(f"최대값 실제값 (평균): {post_stats['max'].mean():.6f}")
+
+        # RobustScaler의 경우 중앙값, IQR 검증
+        elif method == 'robust':
+            print("\nRobustScaler 검증:")
+            print(f"중앙값 기대값: 0.0")
+            print(f"중앙값 실제값 (평균): {post_stats['50%'].mean():.6f}")
+            # 사분위수 범위 표시
+            print(f"1사분위수 실제값 (평균): {post_stats['25%'].mean():.6f}")
+            print(f"3사분위수 실제값 (평균): {post_stats['75%'].mean():.6f}")
+    
+    # 스케일러 객체 저장
+    os.makedirs('models', exist_ok=True) # models 디렉토리 생성
+    joblib.dump(scaler, f'models/{method}_scaler.joblib') # scaler 객체를 파일로 저장
+    
+    if verbose: # 스케일러 저장 성공 시 메시지 출력
+        print(f"\n스케일러 객체를 'models/{method}_scaler.joblib'에 저장했습니다.")
+    
+    return df_scaled, scaler
