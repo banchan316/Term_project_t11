@@ -44,13 +44,13 @@ def preprocessing(df,target_name):
         print(col, df[col].unique().size)#country 단일 클래스라 삭제 
 
     features_to_drop = [
-        'ID', 'Source', 'Start_Time', 'End_Time',
+        'ID', 'Source', 'End_Time',
         'End_Lat', 'End_Lng', # inspection 결과 결측치가 너무 많음 
         'Distance(mi)', #사고 후에나 알 수 있음
         'Country', #단일 클래스 
         'Description', 'Weather_Timestamp', #불필요한 정보
         'Wind_Chill(F)', # Temperature와 상관관계 높고 결측치 많음
-        'Street', 'City', 'State', 'Zipcode', 'Timezone', 'Airport_Code', #굳이 필요한가
+        'Street', 'City', 'Zipcode', 'Timezone', 'Airport_Code', #굳이 필요한가
         'Amenity', 'Bump', 'Give_way', 'No_Exit', 'Railway', 'Roundabout', 'Station', 'Stop', 'Traffic_Calming', 'Turning_Loop', #inspection 결과 너무 편향됨
         'Civil_Twilight', 'Nautical_Twilight', 'Astronomical_Twilight' # Twilight 컬럼들 (Sunrise_Sunset과 유사하며, 카디널리티 줄이기 위해 하나만 남김)
     ]
@@ -71,6 +71,3 @@ if __name__ == "__main__":
     x,y = preprocessing(df, 'Severity') #Severity 또는 Duration_Minutes 입력 
     print(x.columns)  
     print(y.value_counts())
-
-    
-
