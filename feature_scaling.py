@@ -3,10 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
-import joblib
-import os
-from preprocessing import preprocessing
-from handle_missing_value import handle_missing_value
 
 # 수치형 특성의 분포 및 스케일 분석
 def analyze_numeric_features(df, verbose=True, visualize=False):
@@ -229,107 +225,7 @@ def scale_features(df, method='standard', cols=None, verbose=True):
             print(f"1사분위수 실제값 (평균): {post_stats['25%'].mean():.6f}")
             print(f"3사분위수 실제값 (평균): {post_stats['75%'].mean():.6f}")
     
-    # 스케일러 객체 저장
-    os.makedirs('models', exist_ok=True) # models 디렉토리 생성
-    joblib.dump(scaler, f'models/{method}_scaler.joblib') # scaler 객체를 파일로 저장
-    
-    if verbose: # 스케일러 저장 성공 시 메시지 출력
-        print(f"\n스케일러 객체를 'models/{method}_scaler.joblib'에 저장했습니다.")
-    
     return df_scaled, scaler
-
-# 이미 학습된 스케일러를 새 데이터에 적용
-def apply_scaling(df, scaler, cols=None, verbose=True):
-    """
-    df : pandas DataFrame (스케일링할 데이터프레임)
-    scaler : object (학습된 스케일러 객체)
-    cols : list, default=None (스케일링할 컬럼 목록 (None이면 스케일러가 학습된 모든 특성))
-    verbose : bool, default=True (과정과 결과를 출력할지 여부)
-    df_scaled : pandas DataFrame (스케일링된 데이터프레임)
-    """
-    if scaler is None:
-        if verbose:
-            print("스케일러가 제공되지 않았습니다. 원본 데이터를 반환합니다.")
-        return df.copy()
-    
-    # 원본 데이터 복사
-    df_scaled = df.copy()
-    
-    # 학습된 특성명 확인 (가능한 경우)
-    try:
-        # StandardScaler, MinMaxScaler, RobustScaler는 feature_names_in_ 속성을 가짐
-        scaler_features = scaler.feature_names_in_
-        has_feature_names = True
-    except:
-        # 특성명을 가지지 않는 경우 (수동으로 적용된 스케일러 등)
-        has_feature_names = False
-    
-    # 스케일링할 컬럼 선택
-    if cols is None:
-        if has_feature_names:
-            # 스케일러가 학습된 특성만 선택
-            numeric_cols = [col for col in scaler_features if col in df.columns]
-        else:
-            # 모든 수치형 특성 선택
-            numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    else:
-        numeric_cols = [col for col in cols if col in df.columns]
-    
-    if not numeric_cols:
-        if verbose:
-            print("스케일링할 수치형 특성이 없습니다.")
-        return df_scaled
-    
-    # 결측치 확인 (결측치가 있으면 경고)
-    missing_cols = [col for col in numeric_cols if df[col].isnull().sum() > 0]
-    if missing_cols:
-        if verbose:
-            print(f"특성에 결측치가 있습니다. 스케일링 전에 결측치를 처리하세요.")
-            for col in missing_cols:
-                print(f"  - {col}: {df[col].isnull().sum()}개 결측치")
-        # 결측치가 있는 특성은 제외
-        numeric_cols = [col for col in numeric_cols if col not in missing_cols]
-        if not numeric_cols:
-            if verbose:
-                print("스케일링할 수치형 특성이 남아있지 않습니다.")
-            return df_scaled
-    
-    # 스케일링 적용
-    df_scaled[numeric_cols] = scaler.transform(df[numeric_cols])
-    
-    if verbose:
-        print(f"{len(numeric_cols)}개 수치형 특성에 스케일링 적용")
-        
-        # 스케일러 유형 식별
-        scaler_type = type(scaler).__name__
-        
-        # 스케일링 후 통계
-        post_stats = df_scaled[numeric_cols].describe().T
-        
-        print("\n=== 스케일링 결과 통계 ===")
-        print(post_stats)
-        
-        # 스케일러 유형에 따른 검증
-        if scaler_type == 'StandardScaler':
-            print("\nStandardScaler 검증:")
-            print(f"평균 기대값: 0.0")
-            print(f"표준편차 기대값: 1.0")
-            print(f"평균 실제값 (평균): {post_stats['mean'].mean():.6f}")
-            print(f"표준편차 실제값 (평균): {post_stats['std'].mean():.6f}")
-        elif scaler_type == 'MinMaxScaler':
-            print("\nMinMaxScaler 검증:")
-            print(f"최소값 기대값: 0.0")
-            print(f"최대값 기대값: 1.0")
-            print(f"최소값 실제값 (평균): {post_stats['min'].mean():.6f}")
-            print(f"최대값 실제값 (평균): {post_stats['max'].mean():.6f}")
-        elif scaler_type == 'RobustScaler':
-            print("\nRobustScaler 검증:")
-            print(f"중앙값 기대값: 0.0")
-            print(f"중앙값 실제값 (평균): {post_stats['50%'].mean():.6f}")
-            print(f"1사분위수 실제값 (평균): {post_stats['25%'].mean():.6f}")
-            print(f"3사분위수 실제값 (평균): {post_stats['75%'].mean():.6f}")
-    
-    return df_scaled
 
 # 스케일링 전후 데이터 분포 시각화해서 비교
 def visualize_scaling_effect(df_original, df_scaled, cols=None, max_cols=5):
@@ -406,9 +302,6 @@ if __name__ == "__main__":
     # 데이터 로드
     print("1. 데이터 로드")
     file_path = "US_Accidents_March23_sampled_500k.csv"
-    if not os.path.exists(file_path):
-        print(f"오류: {file_path} 파일을 찾을 수 없습니다.")
-        exit()
     
     df = pd.read_csv(file_path)
     print(f"데이터 로드 완료: {df.shape}")
@@ -420,7 +313,7 @@ if __name__ == "__main__":
     
     # 3. 결측치 처리 (handle_missing_value.py)
     print("\n3. 결측치 처리")
-    X_imputed = handle_missing_value(X, verbose=True)
+    X_imputed, _ = handle_missing_value(X, verbose=True)
     print(f"결측치 처리 완료: {X_imputed.shape}")
     
     # 결측치 처리된 데이터의 결측치 확인
@@ -444,40 +337,6 @@ if __name__ == "__main__":
     print("\n7. 정규화(RobustScaler) 적용")
     X_robust, robust_scaler = scale_features(X_imputed, method='robust', verbose=True)
     
-    # 8. 저장된 스케일러로 새 데이터 테스트
-    print("\n8. 저장된 스케일러로 새 데이터 테스트")
+
     
-    # 테스트용 샘플 데이터 생성 (원본 데이터의 일부)
-    sample_size = min(1000, len(X_imputed))
-    X_sample = X_imputed.sample(sample_size, random_state=42)
     
-    # 각 스케일러로 샘플 데이터 변환
-    print("\n8.1. StandardScaler 적용 테스트:")
-    X_sample_std = apply_scaling(X_sample, scaler, verbose=True)
-    
-    print("\n8.2. MinMaxScaler 적용 테스트:")
-    X_sample_minmax = apply_scaling(X_sample, minmax_scaler, verbose=True)
-    
-    print("\n8.3. RobustScaler 적용 테스트:")
-    X_sample_robust = apply_scaling(X_sample, robust_scaler, verbose=True)
-    
-    # 9. 스케일링 결과 비교 (첫 번째 행 출력)
-    print("\n9. 스케일링 결과 비교 (첫 번째 행):")
-    compare_df = pd.DataFrame({
-        'Original': X_sample.iloc[0],
-        'StandardScaler': X_sample_std.iloc[0],
-        'MinMaxScaler': X_sample_minmax.iloc[0],
-        'RobustScaler': X_sample_robust.iloc[0]
-    }).T
-    
-    print(compare_df)
-    
-    # 10. 결과 저장
-    print("\n10. 정규화된 데이터 저장")
-    os.makedirs('processed_data', exist_ok=True)
-    X_scaled.to_csv('processed_data/X_standard_scaled.csv', index=False)
-    X_minmax.to_csv('processed_data/X_minmax_scaled.csv', index=False)
-    X_robust.to_csv('processed_data/X_robust_scaled.csv', index=False)
-    pd.Series(y).to_csv('processed_data/y.csv', index=False, header=['target'])
-    
-    print("테스트 완료! 정규화된 데이터가 'processed_data' 폴더에 저장되었습니다.")
