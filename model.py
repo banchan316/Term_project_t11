@@ -152,8 +152,8 @@ def duration_model_linear(X, y): #예측을 거의 못 하는데용
 
 def duration_model_rf(X, y, random_state=42, save_path="best_rf_model.joblib"):
     param_grid = {
-        'n_estimators': [50 ,100,200],
-        'max_depth': [10, 20],
+        'n_estimators': [100,200,300],
+        'max_depth': [10, 20, 30],
         'min_samples_split': [2, 5],
         'min_samples_leaf': [1, 2]
     }
