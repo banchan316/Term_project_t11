@@ -45,7 +45,7 @@ def drop(df,target_name):
         print(col, df[col].unique().size)#country 단일 클래스라 삭제 
 
     features_to_drop = [
-        'ID', 'Source', 'End_Time',
+        'ID', 'Source','Start_time', 'End_Time',
         'End_Lat', 'End_Lng', # inspection 결과 결측치가 너무 많음 
         'Distance(mi)', #사고 후에나 알 수 있음
         'Country', #단일 클래스 
