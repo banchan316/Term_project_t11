@@ -4,7 +4,7 @@ import preprocessing as pp
 import feature_scaling as fs
 import model as md  
 import joblib
-
+from evaluation import run_evaluation
 def main():
     df = pd.read_csv("US_Accidents_March23_sampled_500k.csv")
     # column drop 및 타겟 ,변수 생성 
@@ -55,6 +55,9 @@ def main():
     feat_imp = pd.Series(importances, index=feature_names)
     feat_imp = feat_imp.sort_values(ascending=False)
     print(feat_imp)
+
+    # 모델 평가 (severity)
+    run_evaluation()
 
 if __name__ == "__main__":
     main()
