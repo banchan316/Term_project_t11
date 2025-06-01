@@ -210,8 +210,8 @@ def duration_model_rf_top10_log(X_full, y, top_features, random_state=42):
     y_log = np.log1p(y)
 
     param_grid = {
-        'n_estimators': [100, 200, 300],
-        'max_depth': [10, 20, 30],
+        'n_estimators': [200, 300],
+        'max_depth': [20, 30],
         'min_samples_split': [2, 5],
         'min_samples_leaf': [1, 2]
     }
