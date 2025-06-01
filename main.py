@@ -5,7 +5,6 @@ import feature_scaling as fs
 import model as md  
 import joblib
 import matplotlib.pyplot as plt
-
 def main():
     df = pd.read_csv("US_Accidents_March23_sampled_500k.csv")
     # column drop 및 타겟 ,변수 생성 
