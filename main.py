@@ -4,6 +4,7 @@ import preprocessing as pp
 import feature_scaling as fs
 import model as md  
 import joblib
+import matplotlib.pyplot as plt
 
 def main():
     df = pd.read_csv("US_Accidents_March23_sampled_500k.csv")
@@ -43,8 +44,8 @@ def main():
     X_robust, robust_scaler = fs.scale_features(X_encoded, method='robust', verbose=True)
 
     #모델  
-    #model = md.severity_model(X_robust, y, n_splits=3) #recall이 너무 낮음 -> 데이터가 불균형해 -> xgboost 사용해보기
-    #model = md.severity_model_xgb(X_robust, y, n_splits = 3) 
+    #model = md.severity_model(X_robust, y, n_splits = 5) #recall이 너무 낮음 -> 데이터가 불균형해 -> xgboost 사용해보기
+    #model = md.severity_model_xgb(X_robust, y, n_splits = 5) 
 
     #model_duration = md.duration_model_linear(X_robust, y)
     #model_duration = md.duration_model_rf(X_robust, y)
@@ -55,6 +56,19 @@ def main():
     feat_imp = pd.Series(importances, index=feature_names)
     feat_imp = feat_imp.sort_values(ascending=False)
     print(feat_imp)
+    
+    top_n = 10
+    top_features = feat_imp.head(top_n)
+    plt.figure(figsize=(8, 6))
+    top_features.sort_values().plot(kind='barh')
+    plt.title(f'Top {top_n} Feature Importances (Random Forest)')
+    plt.xlabel('Importance Score')
+    plt.ylabel('Feature')
+    plt.tight_layout()
+    plt.grid(axis='x')
+    plt.show()
+
+    model_top10 = md.duration_model_rf_top10_log(X_robust, y, top_features.index)
 
 if __name__ == "__main__":
     main()

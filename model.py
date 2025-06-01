@@ -67,7 +67,7 @@ def severity_model(X, y, n_splits=5, random_state=42):
 
 def severity_model_xgb(X, y, n_splits=5, random_state=42):
 
-    weight = 402090 / 97498 #처음 돌렸을 때도 recall이 너무 낮아서 추가함 
+    weight =  3 #402090 / 97498 처음 돌렸을 때도 recall이 너무 낮아서 추가함 -> 너무 precision이 낮아져서 3으로 조정 
 
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
     acc_list, f1_list = [], []
@@ -81,7 +81,7 @@ def severity_model_xgb(X, y, n_splits=5, random_state=42):
             learning_rate=0.1,
             max_depth=6,
             objective='binary:logistic',
-            eval_metric='mlogloss',
+            eval_metric='aucpr', # precision-recall 기반 평가
             use_label_encoder=False,
             scale_pos_weight= weight,
             random_state=random_state,
@@ -109,7 +109,7 @@ def severity_model_xgb(X, y, n_splits=5, random_state=42):
         learning_rate=0.1,
         max_depth=6,
         objective='binary:logistic',
-        eval_metric='mlogloss',
+        eval_metric='aucpr',
         use_label_encoder=False,
         scale_pos_weight= weight,
         random_state=random_state,
@@ -129,6 +129,7 @@ def severity_model_xgb(X, y, n_splits=5, random_state=42):
     print(classification_report(y, y_pred_all, digits=4))
 
     return final_model
+
 def duration_model_linear(X, y): #예측을 거의 못 하는데용
 
     y_log = np.log1p(y) #편차가 너무 커서
@@ -203,6 +204,65 @@ def duration_model_rf(X, y, random_state=42, save_path="best_rf_model.joblib"):
     print(f"\n모델이 '{save_path}'에 저장되었습니다.")
 
     return best_model
+
+def duration_model_rf_top10_log(X_full, y, top_features, random_state=42):
+    X_selected = X_full[top_features]
+    y_log = np.log1p(y)
+
+    param_grid = {
+        'n_estimators': [100, 200, 300],
+        'max_depth': [10, 20, 30],
+        'min_samples_split': [2, 5],
+        'min_samples_leaf': [1, 2]
+    }
+
+    keys = list(param_grid.keys())
+    best_score = float('inf')
+    best_params = None
+    best_model = None
+
+    print("하이퍼파라미터 조합 탐색 시작...\n")
+
+    for values in product(*param_grid.values()):
+        params = dict(zip(keys, values))
+
+        model = RandomForestRegressor(
+            random_state=random_state,
+            n_jobs=-1,
+            **params
+        )
+
+        model.fit(X_selected, y_log)
+        y_log_pred = model.predict(X_selected)
+        y_pred = np.expm1(y_log_pred)
+
+        rmse = np.sqrt(mean_squared_error(y, y_pred))
+
+        print(f"→ {params} | RMSE: {rmse:.4f}")
+
+        if rmse < best_score:
+            best_score = rmse
+            best_params = params
+            best_model = model
+
+    print("\n최적 하이퍼파라미터:")
+    print(best_params)
+
+    # 최종 성능 평가
+    y_log_pred = best_model.predict(X_selected)
+    y_pred = np.expm1(y_log_pred)
+
+    rmse = np.sqrt(mean_squared_error(y, y_pred))
+    mae = mean_absolute_error(y, y_pred)
+    r2 = r2_score(y, y_pred)
+
+    print("\n최종 모델 성능 (Train 기준):")
+    print(f"RMSE: {rmse:.4f}")
+    print(f"MAE : {mae:.4f}")
+    print(f"R²  : {r2:.4f}")
+
+    return best_model
+    
 
 if __name__ == "__main__":
     df = pd.read_csv("US_Accidents_March23_sampled_500k.csv")
