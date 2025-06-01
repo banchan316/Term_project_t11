@@ -1,12 +1,14 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score, f1_score, classification_report, mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import accuracy_score, f1_score, classification_report, mean_squared_error, mean_absolute_error, r2_score, precision_recall_curve, auc
 import numpy as np
 from xgboost import XGBClassifier
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
+import matplotlib.pyplot as plt
 from itertools import product
+from imblearn.under_sampling import RandomUnderSampler
 import joblib
 
 def severity_model(X, y, n_splits=5, random_state=42):
@@ -77,7 +79,7 @@ def severity_model_xgb(X, y, n_splits=5, random_state=42):
         y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
 
         model = XGBClassifier(
-            n_estimators=100,
+            n_estimators= 300,
             learning_rate=0.1,
             max_depth=6,
             objective='binary:logistic',
@@ -105,7 +107,7 @@ def severity_model_xgb(X, y, n_splits=5, random_state=42):
 
     # 전체 데이터로 최종 모델 훈련
     final_model = XGBClassifier(
-        n_estimators=100,
+        n_estimators= 300,
         learning_rate=0.1,
         max_depth=6,
         objective='binary:logistic',
@@ -122,13 +124,43 @@ def severity_model_xgb(X, y, n_splits=5, random_state=42):
     acc_final = accuracy_score(y, y_pred_all)
     f1_final = f1_score(y, y_pred_all, average='macro')
 
-    print("\전체 데이터 학습 후 성능:")
+    print("\n전체 데이터 학습 후 성능:")
     print(f"Accuracy (train on all): {acc_final:.4f}")
     print(f"F1 (macro): {f1_final:.4f}")
     print("\n 전체 데이터 분류 리포트:")
     print(classification_report(y, y_pred_all, digits=4))
 
-    return final_model
+    y_proba_all = final_model.predict_proba(X)[:, 1]
+
+    # Precision-Recall Curve 계산
+    precision, recall, thresholds = precision_recall_curve(y, y_proba_all)
+    pr_auc = auc(recall, precision)
+
+    # 시각화
+    plt.figure(figsize=(8, 6))
+    plt.plot(recall, precision, label=f'PR Curve (AUC = {pr_auc:.4f})')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Trade-off Curve (Full Dataset)')
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    precision, recall, thresholds = precision_recall_curve(y, y_proba_all)
+    f1_scores = 2 * (precision * recall) / (precision + recall + 1e-6)
+
+    best_idx = np.argmax(f1_scores)
+    best_threshold = thresholds[best_idx]
+    best_precision = precision[best_idx]
+    best_recall = recall[best_idx]
+    best_f1 = f1_scores[best_idx]
+
+    print(f"최적 Threshold = {best_threshold:.4f}")
+    print(f"Precision = {best_precision:.4f}")
+    print(f"Recall    = {best_recall:.4f}")
+    print(f"F1 Score  = {best_f1:.4f}")
+
 
 def duration_model_linear(X, y): #예측을 거의 못 하는데용
 
