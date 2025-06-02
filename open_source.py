@@ -12,7 +12,7 @@ import feature_scaling as fs
 import preprocessing as pp
 
 def main():
-    target_options = ['Duration_Minutes']  #['Severity', 'Duration_Minutes']
+    target_options = ['Severity', 'Duration_Minutes']
 
     for TARGET in target_options:
         print(f"==========================")
