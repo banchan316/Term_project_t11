@@ -1,6 +1,6 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score, f1_score, classification_report, mean_squared_error, mean_absolute_error, r2_score, precision_recall_curve, auc
+from sklearn.metrics import accuracy_score, f1_score, classification_report, mean_squared_error, mean_absolute_error, r2_score, precision_recall_curve, auc, roc_curve
 import numpy as np
 from xgboost import XGBClassifier
 from sklearn.linear_model import LinearRegression
@@ -69,7 +69,7 @@ def severity_model(X, y, n_splits=5, random_state=42):
 
 def severity_model_xgb(X, y, n_splits=5, random_state=42):
 
-    weight =  3 #402090 / 97498 처음 돌렸을 때도 recall이 너무 낮아서 추가함 -> 너무 precision이 낮아져서 3으로 조정 
+    weight = 3 #402090 / 97498 # 처음 돌렸을 때도 recall이 너무 낮아서 추가함 -> 너무 precision이 낮아져서 3으로 조정 
 
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
     acc_list, f1_list = [], []
@@ -133,34 +133,55 @@ def severity_model_xgb(X, y, n_splits=5, random_state=42):
     y_proba_all = final_model.predict_proba(X)[:, 1]
 
     # Precision-Recall Curve 계산
-    precision, recall, thresholds = precision_recall_curve(y, y_proba_all)
-    pr_auc = auc(recall, precision)
+    fpr, tpr, thresholds_roc = roc_curve(y, y_proba_all)
+    roc_auc = auc(fpr, tpr)
 
-    # 시각화
+    # ROC 곡선 시각화
     plt.figure(figsize=(8, 6))
-    plt.plot(recall, precision, label=f'PR Curve (AUC = {pr_auc:.4f})')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Trade-off Curve (Full Dataset)')
+    plt.plot(fpr, tpr, label=f'ROC Curve (AUC = {roc_auc:.4f})')
+    plt.plot([0, 1], [0, 1], 'k--', label='Random Classifier')
+    plt.xlabel('False Positive Rate (FPR)')
+    plt.ylabel('True Positive Rate (TPR)')
+    plt.title('ROC Curve (Full Dataset)')
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.show()  # 저장
+    plt.close()
 
-    precision, recall, thresholds = precision_recall_curve(y, y_proba_all)
+    # PR 계산
+    precision, recall, thresholds_pr = precision_recall_curve(y, y_proba_all)
+    pr_auc = auc(recall, precision)
+
+    # F1 기준 최적 threshold
     f1_scores = 2 * (precision * recall) / (precision + recall + 1e-6)
-
     best_idx = np.argmax(f1_scores)
-    best_threshold = thresholds[best_idx]
+    best_threshold = thresholds_pr[best_idx]
     best_precision = precision[best_idx]
     best_recall = recall[best_idx]
     best_f1 = f1_scores[best_idx]
 
-    print(f"최적 Threshold = {best_threshold:.4f}")
-    print(f"Precision = {best_precision:.4f}")
-    print(f"Recall    = {best_recall:.4f}")
-    print(f"F1 Score  = {best_f1:.4f}")
+    # PR 곡선 시각화
+    plt.figure(figsize=(8, 6))
+    plt.plot(recall, precision, label=f'PR Curve (AUC = {pr_auc:.4f})')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve (Full Dataset)')
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()  # 이것도 저장 말고 바로 띄움!
 
+    #결과 출력
+    print("\n[Precision-Recall 기반 평가]")
+    print(f"AUC (PR): {pr_auc:.4f}")
+    print(f"최적 Threshold = {best_threshold:.4f}")
+    print(f"Precision      = {best_precision:.4f}")
+    print(f"Recall         = {best_recall:.4f}")
+    print(f"F1 Score       = {best_f1:.4f}")
+
+
+    return final_model
 
 def duration_model_linear(X, y): #예측을 거의 못 하는데용
 
