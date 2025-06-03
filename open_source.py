@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
 from sklearn.metrics import make_scorer, accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LogisticRegression
@@ -57,6 +57,8 @@ def main():
             }
             sort_descending = True
 
+            cv_method = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) # StratifiedKFold 사용 (클래스 불균형 고려)
+
         else:  # Duration_Minutes
             models = {
                 "LinearRegression": LinearRegression(),
@@ -69,22 +71,44 @@ def main():
             }
             sort_descending = False
 
+            cv_method = KFold(n_splits=5, shuffle=True, random_state=42) # KFold 사용
+
         results = []
 
         for scaler_name, X_scaled in scaled_sets.items():
             print(f"\n [{scaler_name}] 정규화 적용")
-            X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-            for model_name, model in models.items():
-                model.fit(X_train, y_train)
-                preds = model.predict(X_test)
-                for score_name, scorer in scorers.items():
-                    score = scorer(y_test, preds)
-                    print(f"→ {model_name} | {score_name}: {score:.4f}")
-                    results.append((TARGET, scaler_name, model_name, score_name, score))
+            
+            # 교차검증으로 더 안정적인 평가
+            cv_results = []
+            for train_idx, test_idx in cv_method.split(X_scaled, y):
+                X_train, X_test = X_scaled.iloc[train_idx], X_scaled.iloc[test_idx]
+                y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+                
+                for model_name, model in models.items():
+                    model.fit(X_train, y_train)
+                    preds = model.predict(X_test)
+                    for score_name, scorer in scorers.items():
+                        score = scorer(y_test, preds)
+                        cv_results.append((scaler_name, model_name, score_name, score))
+            
+            # 교차검증 평균 계산
+            cv_df = pd.DataFrame(cv_results, columns=['scaler', 'model', 'metric', 'score'])
+            cv_summary = cv_df.groupby(['scaler', 'model', 'metric'])['score'].agg(['mean', 'std']).reset_index()
+            
+            for _, row in cv_summary.iterrows():
+                print(f"→ {row['model']} | {row['metric']}: {row['mean']:.4f} ± {row['std']:.4f}")
+                results.append((TARGET, row['scaler'], row['model'], row['metric'], row['mean']))
 
         # Top 5 출력
         print(f"\n[TOP 5 조합 - 타겟: {TARGET}]")
-        results_sorted = sorted(results, key=lambda x: x[4], reverse=sort_descending)
+        
+        # 주요 지표로 정렬 (분류: f1, 회귀: R2)
+        if TARGET == 'Severity':
+            main_metric_results = [r for r in results if r[3] == 'f1']
+        else:
+            main_metric_results = [r for r in results if r[3] == 'R2']
+        
+        results_sorted = sorted(main_metric_results, key=lambda x: x[4], reverse=sort_descending)
         for i, (tgt, scaler, model, metric, score) in enumerate(results_sorted[:5], 1):
             print(f"{i}. [{scaler}] {model} ({metric}) → {score:.4f}")
 
